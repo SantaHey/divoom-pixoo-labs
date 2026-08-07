@@ -58,8 +58,6 @@ uv run pixoo.py 11:75:58:C1:62:D0 frame.png
 
 # 3-RubixDev
 
-# 3-RubixDev
-
 ```sh
 mkdir C:\Users\jeannico.thurre\labs\divoom\3-RubixDev
 cd C:\Users\jeannico.thurre\labs\divoom\3-RubixDev
@@ -83,12 +81,16 @@ install pré-requis
 ```sh
 # install nodejs (Windows)
 winget install -e --id OpenJS.NodeJS
+# install nvm
+winget install -e --id OpenJS.NodeJS.LTS
 ```
 
 ```sh
 cd C:\Users\jeannico.thurre\labs\divoom
 git clone https://github.com/saintedlama/pixoo-soup 4-pixoo-soup
 cd 4-pixoo-soup
+# IMPORTANT
+nvm use 18
 npm install
 ```
 
