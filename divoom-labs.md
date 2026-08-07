@@ -25,6 +25,7 @@ uv venv --python 3.11 C:\Users\jeannico.thurre\labs\_kernel-uv
 ```
 
 ```sh
+mkdir C:\Users\jeannico.thurre\labs\divoom\1-pixoo-next
 cd C:\Users\jeannico.thurre\labs\divoom\1-pixoo-next
 git clone https://github.com/TheSecondLugia/pixoo-next _pixoo-next
 cd _pixoo-next
