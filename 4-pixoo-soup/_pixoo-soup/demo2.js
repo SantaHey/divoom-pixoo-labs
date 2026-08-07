@@ -1,5 +1,5 @@
 import readline from "readline";
-import { display, connect } from "./divoom/4-pixoo-soup/index.js";
+import { display, connect } from "./index.js";
 
 async function main() {
   const deviceAddress = process.argv[2];
@@ -24,6 +24,8 @@ async function main() {
     pixels[cursorIdx] = currentColor;
 
     await display({ colors, pixels }, (buffer) => connection.write(buffer));
+    console.log("Colors : ", colors);
+    console.log("Pixels : ", pixels);
   }
 
   readline.emitKeypressEvents(process.stdin);
