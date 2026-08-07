@@ -55,3 +55,44 @@ C:\Users\jeannico.thurre\labs\_kernel-uv\Scripts\activate.ps1
 
 uv run pixoo.py 11:75:58:C1:62:D0 frame.png
 ```
+
+# 3-RubixDev
+
+# 3-RubixDev
+
+```sh
+mkdir C:\Users\jeannico.thurre\labs\divoom\3-RubixDev
+cd C:\Users\jeannico.thurre\labs\divoom\3-RubixDev
+git clone https://github.com/RubixDev/pixoo _pixoo
+cd _pixoo
+```
+
+```sh
+# install rust (Windows)
+winget install -e --id Rustlang.Rustup
+```
+
+```sh
+# run example
+cargo run --release --example=image 11:75:58:C1:62:D0
+```
+ 
+# 4-pixoo-soup
+
+install pré-requis
+```sh
+# install nodejs (Windows)
+winget install -e --id OpenJS.NodeJS
+```
+
+```sh
+cd C:\Users\jeannico.thurre\labs\divoom
+git clone https://github.com/saintedlama/pixoo-soup 4-pixoo-soup
+cd 4-pixoo-soup
+npm install
+```
+
+```sh
+cd C:\Users\jeannico.thurre\labs\divoom\4-pixoo-soup
+node demo.js 11:75:58:C1:62:D0
+```

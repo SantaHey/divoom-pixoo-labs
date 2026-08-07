@@ -1,0 +1,21 @@
+[package]
+name = "pixoo"
+version = "0.1.0"
+edition = "2021"
+authors = ["RubixDev"]
+license = "GPL-3.0-only"
+description = "Interact with Divoom Pixoo devices"
+repository = "https://github.com/RubixDev/pixoo"
+keywords = ["divoom", "pixoo", "pixel"]
+categories = ["graphics"]
+
+[dependencies]
+bluetooth-serial-port = "0.6.0"
+bounded-integer = { version = "0.5.8", features = ["types"] }
+image = "0.25.5"
+itertools = "0.14.0"
+thiserror = "2.0.11"
+
+[dev-dependencies]
+anyhow = "1.0.95"
+glam = "0.29.2"
