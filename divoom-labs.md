@@ -96,6 +96,6 @@ npm install
 ```
 
 ```sh
-cd C:\Users\jeannico.thurre\labs\divoom\4-pixoo-soup
+cd C:\Users\jeannico.thurre\labs\divoom\4-pixoo-soup\_pixoo-soup
 node demo.js 11:75:58:C1:62:D0
 ```
