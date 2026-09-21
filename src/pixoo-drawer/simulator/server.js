@@ -49,6 +49,4 @@ const server = createServer(async (request, response) => {
   }
 });
 
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Simulateur : http://localhost:${PORT}`);
-});
+server.listen(PORT, "0.0.0.0", () => {});

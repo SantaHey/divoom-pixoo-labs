@@ -15,7 +15,8 @@ async function readConfig() {
 // ==== PORTS EN ARGUMENTS ====
 // Usage : pnpm run dev -- 3010 3011 3012  (web, simulateur, bluetooth)
 //         pnpm run dev -- --web 3010 --simulator 3011 --bluetooth 3012
-const args = process.argv.slice(2);
+// NB : pnpm/npm passe le séparateur "--" au script ; on le retire.
+const args = process.argv.slice(2).filter((value) => value !== "--");
 const argPorts = { web: undefined, simulator: undefined, bluetooth: undefined };
 
 if (args.length >= 3 && args.slice(0, 3).every((value) => /^\d+$/.test(value))) {
@@ -41,20 +42,46 @@ const environment = {
 };
 
 console.log(
-  `Ports : web ${environment.WEB_PORT}, simulateur ${environment.SIMULATOR_PORT}, bluetooth ${environment.BLUETOOTH_PORT}`
+  `Ports : web ${environment.WEB_PORT}, simulateur ${environment.SIMULATOR_PORT}, bluetooth ${environment.BLUETOOTH_PORT}\n`
 );
 
 // ==== START SERVICES ====
 const services = [
-  ["web", "web/server.js"],
-  ["simulator", "simulator/server.js"],
-  ["bluetooth", "bluetooth/server.js"],
+  ["web", "web/server.js", environment.WEB_PORT],
+  ["simulator", "simulator/server.js", environment.SIMULATOR_PORT],
+  ["bluetooth", "bluetooth/server.js", environment.BLUETOOTH_PORT],
 ];
 
-const children = services.map(([name, script]) => {
+// Petit délai pour laisser les serveurs écouter, puis afficher le bloc de liens.
+setTimeout(() => {
+  console.log(
+    `Éditeur : http://localhost:${environment.WEB_PORT}\n` +
+    `Simulateur : http://localhost:${environment.SIMULATOR_PORT}\n` +
+    `Passerelle Bluetooth : http://localhost:${environment.BLUETOOTH_PORT}\n`
+  );
+}, 300);
+
+const children = services.map(([name, script, port]) => {
   const child = spawn(process.execPath, [script], { env: environment, stdio: "inherit" });
   child.on("exit", (code) => {
-    if (code) console.error(`${name} s'est arrêté avec le code ${code}.`);
+    // Si un service échoue (port déjà pris, etc.), on arrête tout proprement.
+    if (code) {
+      console.error(`${name} s'est arrêté avec le code ${code}.`);
+      for (const other of children) {
+        if (other !== child && other.exitCode === null) other.kill();
+      }
+    }
+  });
+  // Détection EADDRINUSE : le process enfant imprime l'erreur sur stderr,
+  // on la capte pour afficher un message clair avec le port et le PID occupant.
+  child.stderr?.on("data", (chunk) => {
+    const text = chunk.toString();
+    if (text.includes("EADDRINUSE")) {
+      console.error(
+        `\n❌ Port ${port} déjà utilisé par un autre processus. ` +
+          `Sur Windows : Stop-Process -Name node -Force | Sur Linux : fuser -k ${port}/tcp`
+      );
+    }
   });
   return child;
 });

@@ -22,10 +22,15 @@ button { width: 100%; margin-top: 10px; background: #7657ff; color: white; font-
 button:hover { filter: brightness(1.12); }
 .secondary { background: #2a2d35; }
 .palette { display: grid; grid-template-columns: repeat(5, 38px); gap: 8px; margin-bottom: 16px; }
+.tools { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.tools button { margin: 0; padding: 10px 8px; background: #2a2d35; }
+.tools button.selected { background: #7657ff; }
 .swatch { width: 38px; height: 38px; margin: 0; padding: 0; border: 3px solid transparent; box-shadow: inset 0 0 0 1px #fff3; }
 .swatch.selected { border-color: white; }
 .color-row { display: flex; gap: 8px; }
-.color-row input { width: 48px; height: 43px; border: 0; background: none; }
+.picker-box { margin-bottom: 18px; }
+.picker-box label { display: block; margin-bottom: 7px; }
+.color-row input { width: 58px; height: 43px; padding: 2px; border: 0; background: none; cursor: pointer; }
 .color-row button { margin: 0; }
 #status { min-height: 2.5em; color: #9da3af; font-size: .9rem; }
 

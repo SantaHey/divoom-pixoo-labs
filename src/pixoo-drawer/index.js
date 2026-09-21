@@ -1,5 +1,5 @@
 import { toImageBuffers } from "./protocol.js";
-import { connect } from "./bluetooth.js";
+import { connect, probeConnection } from "./bluetooth.js";
 
 export async function display(colorsAndPixels, bluetoothWrite) {
   const buffers = toImageBuffers(colorsAndPixels);
@@ -9,4 +9,4 @@ export async function display(colorsAndPixels, bluetoothWrite) {
   }
 }
 
-export { connect, toImageBuffers };
+export { connect, probeConnection, toImageBuffers };
