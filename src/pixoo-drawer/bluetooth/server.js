@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { display, connect, probeConnection } from "../index.js";
+import { BluetoothDisabledError, isBluetoothEnabled } from "../bluetooth.js";
 import { validateDisplay } from "../shared/display-data.js";
 import { addCors, readJson, sendJson } from "../shared/http.js";
 import { PORTS } from "../config.js";
@@ -10,7 +11,7 @@ const READY_DELAY_MS = Number(process.env.PIXOO_READY_DELAY_MS ?? 900);
 const FRAME_DELAY_MS = Number(process.env.PIXOO_FRAME_DELAY_MS ?? 20);
 
 let connection;
-let connectionState = "idle"; // idle | connecting | connected | error
+let connectionState = "idle"; // idle | connecting | connected | error | disabled
 let connectionError = "";
 let writeQueue = Promise.resolve();
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -51,13 +52,18 @@ async function testConnection() {
     throw new Error("Un test de connexion est déjà en cours.");
   }
   requireDeviceAddress();
+  if (!(await isBluetoothEnabled())) {
+    const error = new BluetoothDisabledError();
+    setConnectionState("disabled", error.message);
+    throw error;
+  }
   setConnectionState("connecting");
   try {
     await probeConnection(DEVICE_ADDRESS);
     setConnectionState("ok");
     return { ok: true, address: DEVICE_ADDRESS };
   } catch (error) {
-    setConnectionState("error", error.message);
+    setConnectionState(error instanceof BluetoothDisabledError ? "disabled" : "error", error.message);
     throw error;
   }
 }
@@ -135,7 +141,8 @@ async function scheduleStartupRetry() {
       console.log("⚠️  Aucune adresse Pixoo configurée, connexion Bluetooth désactivée.");
       return;
     }
-    console.log(`❌ Test de connexion : ${error.message}. Nouvel essai dans ${STARTUP_RETRY_MS / 1000}s…`);
+    const prefix = error instanceof BluetoothDisabledError ? "⚠️  Bluetooth désactivé" : "❌ Test de connexion";
+    console.log(`${prefix} : ${error.message}. Nouvel essai dans ${STARTUP_RETRY_MS / 1000}s…`);
   }
 
   // Ne pas empiler plusieurs boucles si un appel survient pendant un retry déjà programmé.

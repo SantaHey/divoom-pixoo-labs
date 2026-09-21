@@ -62,6 +62,28 @@ permet de forcer un envoi.
 
 `Ctrl+C` arrête les trois services.
 
+### Mode en ligne avec Cloudflared
+
+Pour rendre l'éditeur accessible sur Internet, sans exposer directement le
+simulateur ni la passerelle Bluetooth :
+
+```sh
+pnpm run dev -- --online
+```
+
+Ce mode lance le tunnel nommé de ton compte Cloudflare avec le token chargé
+depuis `.env.local`. Le navigateur ne parle qu'au backend de l'éditeur ; c'est
+ce backend qui relaie les images vers le simulateur et le Pixoo en local.
+Les ports du simulateur et du Bluetooth restent donc uniquement accessibles
+sur la machine qui exécute les services.
+
+Prérequis : la commande `cloudflared` doit être installée, le tunnel de ton
+compte doit publier `pixel.turiste.ch` vers le port web local, et
+`.env.local` doit contenir `CLOUDFLARED_TUNNEL_TOKEN`.
+
+Le mode `--online` refuse de démarrer si le token manque, afin de ne jamais
+basculer silencieusement sur un Quick Tunnel `trycloudflare.com`.
+
 ### Ports personnalisés
 
 Par défaut : web **3010**, simulateur **3011**, bluetooth **3012** (modifiables dans

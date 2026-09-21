@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { PORTS } from "./config.js";
 
@@ -15,8 +16,11 @@ async function readConfig() {
 // ==== PORTS EN ARGUMENTS ====
 // Usage : pnpm run dev -- 3010 3011 3012  (web, simulateur, bluetooth)
 //         pnpm run dev -- --web 3010 --simulator 3011 --bluetooth 3012
+//         pnpm run dev -- --online
 // NB : pnpm/npm passe le séparateur "--" au script ; on le retire.
-const args = process.argv.slice(2).filter((value) => value !== "--");
+const rawArgs = process.argv.slice(2).filter((value) => value !== "--");
+const online = rawArgs.includes("--online");
+const args = rawArgs.filter((value) => value !== "--online");
 const argPorts = { web: undefined, simulator: undefined, bluetooth: undefined };
 
 if (args.length >= 3 && args.slice(0, 3).every((value) => /^\d+$/.test(value))) {
@@ -30,8 +34,21 @@ if (args.length >= 3 && args.slice(0, 3).every((value) => /^\d+$/.test(value))) 
 }
 
 const config = await readConfig();
+function loadEnvFile(file) {
+  if (!existsSync(file)) return {};
+  return Object.fromEntries(readFileSync(file, "utf8").split(/\r?\n/).filter((line) => line && !line.trim().startsWith("#")).map((line) => {
+    const [key, ...rest] = line.split("=");
+    return [key.trim(), rest.join("=").trim().replace(/^['\"]|['\"]$/g, "")];
+  }));
+}
+const fileEnvironment = loadEnvFile(new URL(".env.local", import.meta.url));
+const environmentFile = { ...fileEnvironment, ...process.env };
+for (const key of Object.keys(fileEnvironment)) {
+  if (!environmentFile[key]?.trim() || /^<[^>]+>$/.test(environmentFile[key].trim())) environmentFile[key] = fileEnvironment[key];
+}
+const cloudflaredToken = environmentFile.CLOUDFLARED_TUNNEL_TOKEN;
 const environment = {
-  ...process.env,
+  ...environmentFile,
   PIXOO_ADDRESS: config.pixooAddress || "",
   PIXOO_READY_DELAY_MS: String(config.readyDelayMs ?? 900),
   PIXOO_FRAME_DELAY_MS: String(config.frameDelayMs ?? 20),
@@ -44,6 +61,8 @@ const environment = {
 console.log(
   `Ports : web ${environment.WEB_PORT}, simulateur ${environment.SIMULATOR_PORT}, bluetooth ${environment.BLUETOOTH_PORT}\n`
 );
+
+let stopping = false;
 
 // ==== START SERVICES ====
 const services = [
@@ -86,8 +105,36 @@ const children = services.map(([name, script, port]) => {
   return child;
 });
 
+let tunnel;
+if (online) {
+  if (!cloudflaredToken?.trim() || /^<[^>]+>$/.test(cloudflaredToken.trim())) {
+    console.error("❌ --online nécessite CLOUDFLARED_TUNNEL_TOKEN dans .env.local. Refus de lancer un Quick Tunnel trycloudflare.com.");
+    stop();
+    process.exitCode = 1;
+  } else {
+    console.log("Cloudflared : tunnel nommé du compte → pixel.turiste.ch (.env.local)");
+    tunnel = spawn(
+      "cloudflared",
+      ["tunnel", "run", "--token", cloudflaredToken],
+      { env: environment, stdio: "inherit" }
+    );
+    tunnel.on("error", (error) => {
+      console.error(`❌ Impossible de lancer cloudflared : ${error.message}`);
+      stop();
+    });
+    tunnel.on("exit", (code) => {
+      if (code && !stopping) {
+        console.error(`cloudflared s'est arrêté avec le code ${code}.`);
+        stop();
+      }
+    });
+  }
+}
+
 function stop() {
+  stopping = true;
   for (const child of children) child.kill();
+  tunnel?.kill();
 }
 
 process.on("SIGINT", stop);

@@ -1,9 +1,51 @@
 import debug from "debug";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 
 const CONNECT_ATTEMPTS = 3;
 const CONNECT_ATTEMPTS_DELAY = 500;
 
 const log = debug("pixoo-soup");
+const execFileAsync = promisify(execFile);
+
+export class BluetoothDisabledError extends Error {
+  constructor() {
+    super("Bluetooth est désactivé sur cet ordinateur.");
+    this.name = "BluetoothDisabledError";
+  }
+}
+
+/**
+ * Vérifie l'état de l'adaptateur Bluetooth sous Windows.
+ * Sur les autres plateformes, bluetooth-serial-port reste la source de vérité.
+ */
+export async function isBluetoothEnabled() {
+  if (process.platform !== "win32") return true;
+
+  try {
+    const { stdout } = await execFileAsync(
+      "powershell.exe",
+      ["-NoProfile", "-NonInteractive", "-Command", "@(Get-PnpDevice -Class Bluetooth -ErrorAction Stop | Where-Object Status -eq 'OK').Count"],
+      { timeout: 2500, windowsHide: true },
+    );
+    return Number.parseInt(stdout.trim(), 10) > 0;
+  } catch (error) {
+    log(`Unable to determine Bluetooth state: ${error}`);
+    // Si la détection Windows échoue, laisser la bibliothèque native produire
+    // son erreur habituelle plutôt que bloquer les plateformes atypiques.
+    return true;
+  }
+}
+
+async function ensureBluetoothEnabled() {
+  if (!(await isBluetoothEnabled())) throw new BluetoothDisabledError();
+}
+
+function normalizeError(error, fallback) {
+  if (error instanceof Error) return error;
+  if (error?.message) return new Error(error.message);
+  return new Error(error ? String(error) : fallback);
+}
 
 let bluetoothSerialPort;
 async function loadBluetoothSerialPort() {
@@ -21,6 +63,7 @@ async function loadBluetoothSerialPort() {
 }
 
 export async function probeConnection(address, timeoutMs = 4000) {
+  await ensureBluetoothEnabled();
   const bluetoothSerialPort = await loadBluetoothSerialPort();
   const btSerial = new bluetoothSerialPort.BluetoothSerialPort();
   const timeout = new Promise((_, reject) =>
@@ -35,6 +78,7 @@ export async function probeConnection(address, timeoutMs = 4000) {
 }
 
 export async function connect(address, { timeoutMs = 6000 } = {}) {
+  await ensureBluetoothEnabled();
   const bluetoothSerialPort = await loadBluetoothSerialPort();
   const btSerial = new bluetoothSerialPort.BluetoothSerialPort();
 
@@ -44,6 +88,7 @@ export async function connect(address, { timeoutMs = 6000 } = {}) {
     if (remaining <= 0) break;
 
     try {
+      await ensureBluetoothEnabled();
       log(`Connecting to ${address}...`);
 
       const channel = await withTimeout(findSerialPortChannel(btSerial, address), remaining, "Parcours du canal RFCOMM (timeout).");
@@ -81,12 +126,19 @@ function withTimeout(promise, milliseconds, message) {
 }
 
 function findSerialPortChannel(btSerial, address) {
-  return new Promise((resolve, reject) => btSerial.findSerialPortChannel(address, (channel) => resolve(channel), err => reject(err)));
+  return new Promise((resolve, reject) => btSerial.findSerialPortChannel(
+    address,
+    (channel) => resolve(channel),
+    (err) => reject(normalizeError(err, `Impossible de trouver le canal Bluetooth pour ${address}.`)),
+  ));
 }
 
 function connectBluetooth(btSerial, address, channel) {
-  return new Promise((resolve, reject) => btSerial.connect(address, channel,  () => {
-    resolve({ btSerial, address, channel });
-  }, err => reject(err)));
+  return new Promise((resolve, reject) => btSerial.connect(
+    address,
+    channel,
+    () => resolve({ btSerial, address, channel }),
+    (err) => reject(normalizeError(err, `Impossible d'ouvrir le port Bluetooth pour ${address}.`)),
+  ));
 }
 

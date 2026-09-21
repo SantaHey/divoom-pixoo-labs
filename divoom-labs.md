@@ -154,3 +154,47 @@ sudo setcap cap_net_raw+eip $(eval readlink -f $(which node))
 
 - Éditeur : http://IP-DU-PI:3010
 - Simulateur : http://IP-DU-PI:3011
+
+# For online
+
+Le mode online expose uniquement l'éditeur. Le backend relaie ensuite vers le
+simulateur et le Bluetooth en local ; les ports `3021` et `3022` ne sont jamais
+exposés.
+
+## Installation unique
+
+Créer dans Cloudflare un API Token avec **Cloudflare Tunnel: Edit** et
+**DNS: Edit**, puis récupérer l'Account ID.
+
+Créer une seule fois `src/pixoo-drawer/.env.local` :
+
+```dotenv
+CLOUDFLARE_API_TOKEN=<API_TOKEN>
+CLOUDFLARE_ACCOUNT_ID=<ACCOUNT_ID>
+```
+
+Le fichier est ignoré par Git et chargé automatiquement par `online:setup`.
+Tu ne réécris donc plus jamais ces variables.
+
+```sh
+pnpm run online:setup
+```
+
+Le script crée ou réutilise `pixoo-editor`, configure `pixel.turiste.ch` vers
+le port web, crée le DNS et ajoute automatiquement
+`CLOUDFLARED_TUNNEL_TOKEN` dans `.env.local`. Si la zone n'est pas détectée, ajouter
+`CLOUDFLARE_ZONE_ID=<ZONE_ID>` dans `.env.local`.
+
+## Lancement
+
+```sh
+pnpm run dev -- --online 3020 3021 3022
+```
+
+Le runner charge automatiquement `CLOUDFLARED_TUNNEL_TOKEN` depuis
+`.env.local`. Tu peux copier ce fichier sur le Raspberry de manière sécurisée
+ou le gérer avec Bitwarden/1Password ; ne jamais le committer dans Git.
+
+URL publique : https://pixel.turiste.ch
+
+`Ctrl+C` arrête l'éditeur, le simulateur, le Bluetooth et Cloudflared.
