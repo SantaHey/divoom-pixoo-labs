@@ -23,7 +23,7 @@ fonctionne.
 
 ```sh
 cd src/pixoo-drawer
-npm install
+pnpm install
 ```
 
 ## Configuration Bluetooth
@@ -116,12 +116,21 @@ sudo apt-get install -y build-essential python3 libbluetooth-dev
 ### Recompiler le module natif
 
 ```sh
-pnpm run rebuild
+cd "$(realpath node_modules/bluetooth-serial-port)"
+pnpm exec node-gyp rebuild --release
 ```
 
-La commande exécute `pnpm rebuild bluetooth-serial-port` et recompile le
-binaire pour l'architecture du Raspberry (`linux/arm64`). À relancer après un
-changement de version de Node.js.
+Cette compilation directe est nécessaire avec pnpm 12, qui peut ignorer le
+script natif du paquet installé depuis Git. Elle génère
+`build/Release/BluetoothSerialPort.node` pour l'architecture du Raspberry
+(`linux/arm64`). À relancer après un changement de version de Node.js.
+
+Vérifier que Node peut charger le binaire :
+
+```sh
+cd ~/dev/divoom-pixoo-labs/src/pixoo-drawer
+node -e "import('bluetooth-serial-port').then(() => console.log('IMPORT OK')).catch(console.error)"
+```
 
 ### Simulateur seul : rien à faire
 
