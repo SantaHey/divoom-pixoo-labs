@@ -25,14 +25,24 @@ export async function isBluetoothEnabled() {
   try {
     const { stdout } = await execFileAsync(
       "powershell.exe",
-      ["-NoProfile", "-NonInteractive", "-Command", "@(Get-PnpDevice -Class Bluetooth -ErrorAction Stop | Where-Object Status -eq 'OK').Count"],
+      ["-NoProfile", "-NonInteractive", "-Command", [
+        "Add-Type -AssemblyName System.Runtime.WindowsRuntime",
+        "$radio = [Windows.Devices.Radios.Radio,Windows.Devices.Radios,ContentType=WindowsRuntime]",
+        "$operation = $radio::GetRadiosAsync()",
+        "$method = [System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object { $_.Name -eq 'AsTask' -and $_.IsGenericMethodDefinition -and $_.GetParameters().Count -eq 1 } | Select-Object -First 1",
+        "$resultType = [System.Collections.Generic.IReadOnlyList``1].MakeGenericType($radio)",
+        "$task = $method.MakeGenericMethod($resultType).Invoke($null, @($operation))",
+        "$task.Wait()",
+        "$bluetooth = $task.Result | Where-Object Kind -eq 'Bluetooth' | Select-Object -First 1",
+        "if ($null -eq $bluetooth) { 'Missing' } else { $bluetooth.State.ToString() }",
+      ].join("; ")],
       { timeout: 2500, windowsHide: true },
     );
-    return Number.parseInt(stdout.trim(), 10) > 0;
+    return stdout.trim().toLowerCase() === "on";
   } catch (error) {
-    log(`Unable to determine Bluetooth state: ${error}`);
-    // Si la détection Windows échoue, laisser la bibliothèque native produire
-    // son erreur habituelle plutôt que bloquer les plateformes atypiques.
+    log(`Unable to determine Bluetooth radio state: ${error}`);
+    // Si WinRT est indisponible sur une ancienne version de Windows, laisser
+    // la bibliothèque native produire son erreur habituelle.
     return true;
   }
 }

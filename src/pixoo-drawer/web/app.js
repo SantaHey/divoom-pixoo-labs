@@ -3,8 +3,8 @@ const canvas = document.querySelector("#grid");
 const context = canvas.getContext("2d");
 const paletteElement = document.querySelector("#palette");
 const statusElement = document.querySelector("#status");
+const syncElement = document.querySelector("#sync-info");
 
-const STORAGE_KEY = "pixoo-drawer";
 const BASE_COLORS = ["000000", "ffffff", "ff4057", "ff1744", "ff6d00", "ff8a00", "ffcc00", "fff176", "40d978", "00c853", "00c9a7", "00b8d4", "4e7cff", "2979ff", "651fff", "8b5cf6", "d500f9", "ff66c4", "ff80ab", "8b4513", "c08457", "808080", "bdbdbd", "424242"];
 
 let colors = [...BASE_COLORS];
@@ -15,23 +15,62 @@ let drawing = false;
 let startCell;
 let previewPixels;
 let sendTimer;
+let realtime;
+let reconnectTimer;
+let revision = -1;
+let serverStateReady = false;
 
-// ==== PERSISTANCE (localStorage) ====
-function loadState() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (saved?.colors?.length >= 1 && Array.isArray(saved.pixels) && saved.pixels.length === SIZE * SIZE) {
-      colors = [...new Set([...saved.colors, ...BASE_COLORS])];
-      pixels = saved.pixels;
-      selectedColor = saved.selectedColor ?? 1;
-    }
-  } catch {
-    // état corrompu : on repart de zéro
-  }
+// Le serveur est la seule source des pixels, jamais le stockage du navigateur.
+function applySharedDisplay(display, nextRevision) {
+  if (!Array.isArray(display?.colors) || !Array.isArray(display?.pixels) || display.pixels.length !== SIZE * SIZE) return;
+  if (Number.isInteger(nextRevision) && nextRevision < revision) return;
+  colors = [...display.colors];
+  for (const color of BASE_COLORS) if (!colors.includes(color)) colors.push(color);
+  pixels = [...display.pixels];
+  revision = Number.isInteger(nextRevision) ? nextRevision : revision;
+  serverStateReady = true;
+  if (selectedColor >= colors.length) selectedColor = 1;
+  previewPixels = null;
+  drawPalette();
+  drawCanvas();
+  const coloredPixels = pixels.filter((pixel) => pixel !== 0).length;
+  syncElement.textContent = `Serveur chargé : version ${revision}, ${coloredPixels} pixel(s) coloré(s).`;
 }
 
-function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ colors, pixels, selectedColor }));
+function connectRealtime() {
+  clearTimeout(reconnectTimer);
+  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+  realtime = new WebSocket(`${protocol}//${location.host}/realtime`);
+  realtime.onopen = () => { statusElement.textContent = "WebSocket connecté."; };
+  realtime.onmessage = (event) => {
+    try {
+      const message = JSON.parse(event.data);
+      if (message.type === "state") applySharedDisplay(message.display, message.revision);
+      if (message.type === "error") statusElement.textContent = `Erreur : ${message.error}`;
+    } catch (error) {
+      console.error("[pixoo] mise à jour temps réel invalide", error);
+    }
+  };
+  realtime.onclose = () => {
+    statusElement.textContent = "Reconnexion temps réel…";
+    syncElement.textContent = "Serveur non joignable : nouvelle tentative…";
+    reconnectTimer = setTimeout(connectRealtime, 1000);
+  };
+}
+
+// Chargement explicite : même sans WebSocket, un nouveau navigateur lit le
+// fichier permanent du serveur avant toute action.
+async function loadSharedState() {
+  try {
+    syncElement.textContent = "Chargement du dessin serveur…";
+    const response = await fetch("/state", { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const state = await response.json();
+    applySharedDisplay(state.display, state.revision);
+  } catch (error) {
+    console.error("[pixoo] chargement de l'image partagée impossible", error);
+    syncElement.textContent = `Chargement serveur échoué : ${error.message}`;
+  }
 }
 
 // ==== CANVAS ====
@@ -54,6 +93,10 @@ function drawCanvas() {
 }
 
 function paint(event) {
+  if (!serverStateReady) {
+    statusElement.textContent = "Attente du dessin partagé…";
+    return;
+  }
   const cell = getCell(event);
   if (!cell) return;
   if (tool !== "pencil") return preview(cell);
@@ -65,7 +108,6 @@ function paint(event) {
   if (index < 0 || index >= pixels.length || pixels[index] === selectedColor) return;
   pixels[index] = selectedColor;
   drawCanvas();
-  saveState();
   schedulePush();
 }
 
@@ -104,7 +146,7 @@ function floodFill(x, y, target) {
 
 function commit() {
   if (!previewPixels) return;
-  pixels = previewPixels; previewPixels = null; drawCanvas(); saveState(); schedulePush();
+  pixels = previewPixels; previewPixels = null; drawCanvas(); schedulePush();
 }
 
 // ==== PALETTE ====
@@ -115,7 +157,7 @@ function drawPalette() {
     button.className = `swatch${index === selectedColor ? " selected" : ""}`;
     button.style.background = `#${color}`;
     button.title = index === 0 ? "Gomme" : `#${color}`;
-    button.onclick = () => { selectedColor = index; drawPalette(); saveState(); };
+    button.onclick = () => { selectedColor = index; drawPalette(); };
     paletteElement.append(button);
   });
 }
@@ -123,15 +165,26 @@ function drawPalette() {
 // ==== PUSH DATA ====
 async function pushDisplay() {
   clearTimeout(sendTimer);
-  console.log("[pixoo] envoi au simulateur + bluetooth…");
-  statusElement.textContent = "Envoi…";
+  if (!serverStateReady) {
+    statusElement.textContent = "Dessin partagé pas encore chargé : envoi bloqué.";
+    return;
+  }
+  const display = { colors, pixels };
+
+  if (realtime?.readyState === WebSocket.OPEN) {
+    realtime.send(JSON.stringify({ type: "display", display }));
+    statusElement.textContent = "Partagé en temps réel.";
+    return;
+  }
+
+  statusElement.textContent = "Envoi HTTP de secours…";
 
   try {
     const response = await withTimeout(
       fetch("/display", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ colors, pixels }),
+        body: JSON.stringify(display),
       }),
       4000,
       "Délai d'attente dépassé."
@@ -164,20 +217,18 @@ canvas.addEventListener("pointerdown", (event) => { startCell = getCell(event); 
 canvas.addEventListener("pointermove", (event) => { if (drawing) paint(event); });
 canvas.addEventListener("pointerup", () => { drawing = false; commit(); startCell = null; });
 document.querySelector("#send").onclick = pushDisplay;
-document.querySelector("#clear").onclick = () => { pixels.fill(0); drawCanvas(); saveState(); schedulePush(); };
+document.querySelector("#clear").onclick = () => { pixels.fill(0); drawCanvas(); schedulePush(); };
 document.querySelector("#add-color").onclick = () => {
   const color = document.querySelector("#color").value.slice(1).toLowerCase();
   const existingIndex = colors.indexOf(color);
   selectedColor = existingIndex >= 0 ? existingIndex : colors.push(color) - 1;
   drawPalette();
-  saveState();
 };
 document.querySelector("#color").oninput = (event) => {
   const color = event.target.value.slice(1).toLowerCase();
   const existingIndex = colors.indexOf(color);
   selectedColor = existingIndex >= 0 ? existingIndex : colors.push(color) - 1;
   drawPalette();
-  saveState();
 };
 document.querySelector("#tools").onclick = (event) => {
   const button = event.target.closest("button"); if (!button) return;
@@ -185,6 +236,7 @@ document.querySelector("#tools").onclick = (event) => {
   document.querySelectorAll("#tools button").forEach((item) => item.classList.toggle("selected", item === button));
 };
 
-loadState();
 drawPalette();
 drawCanvas();
+loadSharedState();
+connectRealtime();

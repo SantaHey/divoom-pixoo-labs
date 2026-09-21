@@ -32,6 +32,9 @@ export async function readJson(request) {
 export async function sendFile(response, filePath) {
   const extension = filePath.slice(filePath.lastIndexOf("."));
   const content = await readFile(filePath);
-  response.writeHead(200, { "Content-Type": CONTENT_TYPES[extension] ?? "application/octet-stream" });
+  response.writeHead(200, {
+    "Content-Type": CONTENT_TYPES[extension] ?? "application/octet-stream",
+    "Cache-Control": "no-store",
+  });
   response.end(content);
 }

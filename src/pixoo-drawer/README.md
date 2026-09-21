@@ -60,6 +60,15 @@ Dans l'éditeur, choisissez « Simulateur » ou « Pixoo Bluetooth ». Les dessi
 sont envoyés automatiquement pendant le tracé. Le bouton « Envoyer maintenant »
 permet de forcer un envoi.
 
+## Temps réel multi-utilisateur
+
+L'éditeur conserve une image partagée côté serveur. Chaque navigateur reçoit
+l'image actuelle en se connectant, puis les modifications sont poussées en temps
+réel vers tous les autres navigateurs ouverts. L'image est aussi enregistrée
+localement dans `data/current-display.json` (ignoré par Git), afin de survivre
+au redémarrage du service. En cas de modifications exactement simultanées, la
+dernière image reçue par le serveur devient la version partagée.
+
 `Ctrl+C` arrête les trois services.
 
 ### Mode en ligne avec Cloudflared

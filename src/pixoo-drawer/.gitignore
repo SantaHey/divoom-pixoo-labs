@@ -2,5 +2,6 @@
 node_modules/
 .env.local
 .env.*.local
+data/current-display.json
 # .npmrc local (store-dir Windows, machine-specific)
 .npmrc

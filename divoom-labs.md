@@ -198,3 +198,65 @@ ou le gérer avec Bitwarden/1Password ; ne jamais le committer dans Git.
 URL publique : https://pixel.turiste.ch
 
 `Ctrl+C` arrête l'éditeur, le simulateur, le Bluetooth et Cloudflared.
+
+## Démarrage automatique sur le Raspberry Pi
+
+Lorsque le lancement manuel fonctionne, créer un service `systemd` pour
+démarrer l'éditeur, le Bluetooth et le tunnel Cloudflare à chaque démarrage du
+Pi. Le service relance aussi le programme automatiquement s'il s'arrête.
+
+Vérifier d'abord l'emplacement de pnpm :
+
+```sh
+command -v pnpm
+```
+
+Sur l'installation utilisée ici, il est accessible par
+`/home/pi/.local/share/pnpm/pnpm`. Créer le service :
+
+```sh
+sudo tee /etc/systemd/system/pixoo-drawer.service >/dev/null <<'EOF'
+[Unit]
+Description=Pixoo Drawer + Cloudflare Tunnel
+Wants=network-online.target
+After=network-online.target bluetooth.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/dev/divoom-pixoo-labs/src/pixoo-drawer
+Environment=NODE_ENV=production
+Environment=PATH=/home/pi/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/env pnpm run dev -- --online 3020 3021 3022
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now pixoo-drawer
+```
+
+Si `command -v pnpm` ne retourne pas un chemin dans
+`/home/pi/.local/share/pnpm`, adapter la variable `PATH` du service avec le
+dossier retourné.
+
+Commandes utiles :
+
+```sh
+# État et journaux en direct
+systemctl status pixoo-drawer
+journalctl -u pixoo-drawer -f
+
+# Arrêter, démarrer ou redémarrer manuellement
+sudo systemctl stop pixoo-drawer
+sudo systemctl start pixoo-drawer
+sudo systemctl restart pixoo-drawer
+
+# Désactiver le démarrage automatique
+sudo systemctl disable --now pixoo-drawer
+```
