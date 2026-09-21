@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pixoo Drawer</title>
+    <link rel="stylesheet" href="/style.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <p class="eyebrow">16 × 16 PIXEL STUDIO</p>
+          <h1>Dessine. Envoie.</h1>
+        </div>
+        <label>Cible
+          <select id="target">
+            <option value="simulator">Simulateur</option>
+            <option value="bluetooth">Pixoo Bluetooth</option>
+          </select>
+        </label>
+      </header>
+
+      <section class="workspace">
+        <canvas id="grid" width="512" height="512"></canvas>
+        <aside>
+          <h2>Couleurs</h2>
+          <div id="palette" class="palette"></div>
+          <div class="color-row">
+            <input id="color" type="color" value="#ffcc00" aria-label="Nouvelle couleur">
+            <button id="add-color">Ajouter</button>
+          </div>
+          <button id="clear" class="secondary">Tout effacer</button>
+          <button id="send">Envoyer maintenant</button>
+          <p id="status">Prêt.</p>
+        </aside>
+      </section>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

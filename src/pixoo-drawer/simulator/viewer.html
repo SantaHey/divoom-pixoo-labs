@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pixoo Simulator</title>
+    <style>
+      :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+      body { display: grid; min-height: 100vh; margin: 0; place-content: center; background: #101114; text-align: center; }
+      canvas { width: min(80vw, 640px); image-rendering: pixelated; border: 12px solid #25272d; border-radius: 18px; box-shadow: 0 20px 70px #0008; }
+      p { color: #9ba1ad; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Pixoo Simulator</h1>
+      <canvas id="screen" width="16" height="16"></canvas>
+      <p id="status">En attente de données…</p>
+    </main>
+    <script>
+      const canvas = document.querySelector("#screen");
+      const context = canvas.getContext("2d");
+      const status = document.querySelector("#status");
+
+      // ==== DRAW FRAME ====
+      function draw({ colors, pixels }) {
+        pixels.forEach((colorIndex, index) => {
+          context.fillStyle = `#${colors[colorIndex]}`;
+          context.fillRect(index % 16, Math.floor(index / 16), 1, 1);
+        });
+        status.textContent = `Dernière image : ${new Date().toLocaleTimeString()}`;
+      }
+
+      const events = new EventSource("/events");
+      events.onmessage = (event) => draw(JSON.parse(event.data));
+      events.onerror = () => { status.textContent = "Connexion au simulateur perdue."; };
+    </script>
+  </body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "name": "pixoo-drawer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node dev.js",
+    "web": "node web/server.js",
+    "simulator": "node simulator/server.js",
+    "bluetooth": "node bluetooth/server.js",
+    "example": "node main.js"
+  },
+  "dependencies": {
+    "bluetooth-serial-port": "git+https://github.com/tinyprinter/node-bluetooth-serial-port.git",
+    "debug": "^4.3.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "bluetooth-serial-port"
+    ]
+  },
+  "devDependencies": {
+    "node-gyp": "^13.0.2"
+  }
+}

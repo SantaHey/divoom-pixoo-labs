@@ -1,6 +1,8 @@
-Le code qui marche c'est le lab 4-pixoo-soup demo2
+Le code qui marche est le lab `labs/4-pixoo-soup`, démo `demo2.js`.
 
-voir dans la section 4-pixoo-soup de <divoom-labs.md>
+Une version directement réutilisable est disponible dans `src/pixoo-drawer`.
+
+Voir aussi la section 4-pixoo-soup de `divoom-labs.md`.
 
 faut vibecode avec les erreurs d'install
 

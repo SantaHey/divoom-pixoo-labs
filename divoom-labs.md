@@ -26,7 +26,7 @@ uv venv --python 3.11 C:\Users\jeannico.thurre\labs\_kernel-uv
 
 ```sh
 mkdir C:\Users\jeannico.thurre\labs\divoom\1-pixoo-next
-cd C:\Users\jeannico.thurre\labs\divoom\1-pixoo-next
+cd C:\Users\jeannico.thurre\labs\divoom\labs\1-pixoo-next
 git clone https://github.com/TheSecondLugia/pixoo-next _pixoo-next
 cd _pixoo-next
 C:\Users\jeannico.thurre\labs\_kernel-uv\Scripts\activate.ps1
@@ -41,7 +41,7 @@ uv run --active .\examples\pixoorest\main.py
 # 2-pixoo-client
 
 ```sh
-cd C:\Users\jeannico.thurre\labs\divoom\2-pixoo-client
+cd C:\Users\jeannico.thurre\labs\divoom\labs\2-pixoo-client
 git clone https://github.com/virtualabs/pixoo-client _pixoo-client
 C:\Users\jeannico.thurre\labs\_kernel-uv\Scripts\activate.ps1
 cd .\_pixoo-client\
@@ -49,7 +49,7 @@ uv pip install -r requirements.txt
 ```
 
 ```sh
-cd C:\Users\jeannico.thurre\labs\divoom\2-pixoo-client
+cd C:\Users\jeannico.thurre\labs\divoom\labs\2-pixoo-client
 cd .\_pixoo-client\
 
 C:\Users\jeannico.thurre\labs\_kernel-uv\Scripts\activate.ps1
@@ -60,8 +60,8 @@ uv run pixoo.py 11:75:58:C1:62:D0 frame.png
 # 3-RubixDev
 
 ```sh
-mkdir C:\Users\jeannico.thurre\labs\divoom\3-RubixDev
-cd C:\Users\jeannico.thurre\labs\divoom\3-RubixDev
+mkdir C:\Users\jeannico.thurre\labs\divoom\labs\3-RubixDev
+cd C:\Users\jeannico.thurre\labs\divoom\labs\3-RubixDev
 git clone https://github.com/RubixDev/pixoo _pixoo
 cd _pixoo
 ```
@@ -87,7 +87,7 @@ winget install -e --id OpenJS.NodeJS.LTS
 ```
 
 ```sh
-cd C:\Users\jeannico.thurre\labs\divoom
+cd C:\Users\jeannico.thurre\labs\divoom\labs
 git clone https://github.com/saintedlama/pixoo-soup 4-pixoo-soup
 cd 4-pixoo-soup
 # IMPORTANT
@@ -96,6 +96,17 @@ npm install
 ```
 
 ```sh
-cd C:\Users\jeannico.thurre\labs\divoom\4-pixoo-soup\_pixoo-soup
+cd C:\Users\jeannico.thurre\labs\divoom\labs\4-pixoo-soup\_pixoo-soup
 node demo.js 11:75:58:C1:62:D0
+```
+
+
+# src/pixoo-drawer
+
+```sh
+cd D:\OneDrive\Projets\developpement\web\divoom\_divoom\_main\src\pixoo-drawer\
+
+pnpm install --store-dir=D:/HorsLigne/dev/pnpm/_modules_store
+
+pnpm add --save-dev node-gyp --store-dir=D:/HorsLigne/dev/pnpm/_modules_store
 ```
