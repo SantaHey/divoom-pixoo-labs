@@ -2,16 +2,17 @@ import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { readJson, sendFile, sendJson } from "../shared/http.js";
 import { validateDisplay } from "../shared/display-data.js";
+import { PORTS, TARGETS } from "../config.js";
 
-const PORT = Number(process.env.WEB_PORT ?? 3000);
+const PORT = Number(process.env.WEB_PORT ?? PORTS.web);
 const files = {
   "/": fileURLToPath(new URL("index.html", import.meta.url)),
   "/app.js": fileURLToPath(new URL("app.js", import.meta.url)),
   "/style.css": fileURLToPath(new URL("style.css", import.meta.url)),
 };
 const targets = {
-  simulator: process.env.SIMULATOR_URL ?? "http://localhost:3001/display",
-  bluetooth: process.env.BLUETOOTH_URL ?? "http://localhost:3002/display",
+  simulator: process.env.SIMULATOR_URL ?? TARGETS.simulator,
+  bluetooth: process.env.BLUETOOTH_URL ?? TARGETS.bluetooth,
 };
 
 // ==== TARGET PROXY ====

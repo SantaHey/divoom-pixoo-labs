@@ -110,3 +110,47 @@ pnpm install --store-dir=D:/HorsLigne/dev/pnpm/_modules_store
 
 pnpm add --save-dev node-gyp --store-dir=D:/HorsLigne/dev/pnpm/_modules_store
 ```
+
+run pour le raspberry
+```sh
+cd ~/dev/divoom-pixoo-labs/src/pixoo-drawer
+
+# 1. installer les dépendances
+pnpm install
+
+# 2. recompiler le module natif bluetooth (nécessite build-essential python3 libbluetooth-dev)
+pnpm run rebuild
+
+# 3. tout lancer (ports par défaut : web 3010, simulateur 3011, bluetooth 3012)
+pnpm run dev
+
+# ports personnalisés : pnpm run dev -- <web> <simulateur> <bluetooth>
+pnpm run dev -- 3020 3021 3022
+```
+
+connexion bluetooth manuelle avant de lancer (adresse : 11:75:58:C1:62:D0)
+```sh
+# 1. allumer l'adaptateur bluetooth
+bluetoothctl power on
+
+# 2. connexion manuelle directe au Pixoo
+bluetoothctl connect 11:75:58:C1:62:D0
+# ou test brut du lien RFCOMM :
+sudo rfcomm connect hci0 11:75:58:C1:62:D0   # Ctrl+C pour couper
+```
+
+dépannage
+```sh
+# lancer uniquement la passerelle bluetooth (port 3012)
+pnpm run bluetooth
+
+# listes/scan des appareils visibles
+bluetoothctl devices
+hcitool scan
+
+# si erreur de permission bluetooth
+sudo setcap cap_net_raw+eip $(eval readlink -f $(which node))
+```
+
+- Éditeur : http://IP-DU-PI:3010
+- Simulateur : http://IP-DU-PI:3011

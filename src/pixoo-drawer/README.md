@@ -8,9 +8,9 @@ fonctionnel du lab `4-pixoo-soup`.
 
 | Service | URL | Rôle |
 | --- | --- | --- |
-| Site web | http://localhost:3000 | Dessiner sur une grille 16 × 16 |
-| Simulateur | http://localhost:3001 | Afficher en direct les images reçues |
-| Bluetooth | http://localhost:3002/display | Envoyer les images au vrai Pixoo |
+| Site web | http://localhost:3010 | Dessiner sur une grille 16 × 16 |
+| Simulateur | http://localhost:3011 | Afficher en direct les images reçues |
+| Bluetooth | http://localhost:3012/display | Envoyer les images au vrai Pixoo |
 
 Le simulateur et la passerelle Bluetooth exposent le même endpoint :
 `POST /display`. Le site peut donc changer de cible sans transformer les
@@ -53,8 +53,8 @@ npm run dev
 
 Ouvrez ensuite :
 
-1. http://localhost:3000 pour dessiner ;
-2. http://localhost:3001 pour voir le résultat simulé.
+1. http://localhost:3010 pour dessiner ;
+2. http://localhost:3011 pour voir le résultat simulé.
 
 Dans l'éditeur, choisissez « Simulateur » ou « Pixoo Bluetooth ». Les dessins
 sont envoyés automatiquement pendant le tracé. Le bouton « Envoyer maintenant »
@@ -62,10 +62,25 @@ permet de forcer un envoi.
 
 `Ctrl+C` arrête les trois services.
 
+### Ports personnalisés
+
+Par défaut : web **3010**, simulateur **3011**, bluetooth **3012** (modifiables dans
+`config.js`). Pour les changer juste pour un lancement, passez-les en arguments :
+
+```sh
+pnpm run dev -- 3020 3021 3022
+```
+
+Ordre : web, simulateur, bluetooth. Variante avec noms :
+
+```sh
+pnpm run dev -- --web 3020 --simulator 3021 --bluetooth 3022
+```
+
 ## Accès depuis un autre appareil
 
 Les serveurs écoutent sur le réseau local. Une personne connectée au même
-réseau peut ouvrir `http://IP-DE-CET-ORDINATEUR:3000` et dessiner. Le navigateur
+réseau peut ouvrir `http://IP-DE-CET-ORDINATEUR:3010` et dessiner. Le navigateur
 parle au serveur web, qui relaie ensuite le dessin localement au simulateur ou
 au Bluetooth : aucune configuration n'est nécessaire sur le téléphone ou le
 second ordinateur.
@@ -80,6 +95,40 @@ npm run web
 npm run simulator
 npm run bluetooth
 ```
+
+## Raspberry Pi
+
+La passerelle Bluetooth repose sur le module natif `bluetooth-serial-port`,
+compilé localement avec `node-gyp`. Sur un Raspberry Pi (ARM), ce binaire doit
+être compilé **sur le Pi lui-même** : sans cela, tout service qui charge le
+module échoue avec :
+
+```
+Error: Could not locate the bindings file. Tried: …/build/Release/BluetoothSerialPort.node
+```
+
+### Prérequis système (une seule fois)
+
+```sh
+sudo apt-get install -y build-essential python3 libbluetooth-dev
+```
+
+### Recompiler le module natif
+
+```sh
+pnpm run rebuild
+```
+
+La commande exécute `pnpm rebuild bluetooth-serial-port` et recompile le
+binaire pour l'architecture du Raspberry (`linux/arm64`). À relancer après un
+changement de version de Node.js.
+
+### Simulateur seul : rien à faire
+
+Le site web et le simulateur n'utilisent pas le module natif. Si vous n'envoyez
+que vers le simulateur, `npm run dev` fonctionne immédiatement, sans build.
+L'erreur Bluetooth n'apparaît qu'au moment d'envoyer vers le vrai Pixoo, et
+sans faire planter les autres services.
 
 ## Format échangé
 

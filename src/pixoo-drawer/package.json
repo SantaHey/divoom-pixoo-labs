@@ -9,7 +9,8 @@
     "simulator": "node simulator/server.js",
     "bluetooth": "node bluetooth/server.js",
     "example": "node main.js",
-    "rebuild": "pnpm rebuild bluetooth-serial-port"
+    "rebuild": "pnpm rebuild bluetooth-serial-port",
+    "dev:ports": "cross-env WEB_PORT=3010 SIMULATOR_PORT=3011 BLUETOOTH_PORT=3012 node dev.js"
   },
   "dependencies": {
     "bluetooth-serial-port": "git+https://github.com/tinyprinter/node-bluetooth-serial-port.git",
@@ -21,6 +22,7 @@
     ]
   },
   "devDependencies": {
+    "cross-env": "^10.1.0",
     "node-gyp": "^13.0.2"
   }
 }

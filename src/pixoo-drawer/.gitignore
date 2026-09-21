@@ -1,2 +1,4 @@
 # config.local.json
 node_modules/
+# .npmrc local (store-dir Windows, machine-specific)
+.npmrc

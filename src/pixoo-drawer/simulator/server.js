@@ -2,8 +2,9 @@ import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { createEmptyDisplay, validateDisplay } from "../shared/display-data.js";
 import { addCors, readJson, sendFile, sendJson } from "../shared/http.js";
+import { PORTS } from "../config.js";
 
-const PORT = Number(process.env.SIMULATOR_PORT ?? 3001);
+const PORT = Number(process.env.SIMULATOR_PORT ?? PORTS.simulator);
 const viewerPath = fileURLToPath(new URL("viewer.html", import.meta.url));
 const listeners = new Set();
 let display = createEmptyDisplay();

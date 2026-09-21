@@ -2,8 +2,9 @@ import { createServer } from "node:http";
 import { display, connect } from "../index.js";
 import { validateDisplay } from "../shared/display-data.js";
 import { addCors, readJson, sendJson } from "../shared/http.js";
+import { PORTS } from "../config.js";
 
-const PORT = Number(process.env.BLUETOOTH_PORT ?? 3002);
+const PORT = Number(process.env.BLUETOOTH_PORT ?? PORTS.bluetooth);
 const DEVICE_ADDRESS = process.env.PIXOO_ADDRESS;
 const READY_DELAY_MS = Number(process.env.PIXOO_READY_DELAY_MS ?? 900);
 const FRAME_DELAY_MS = Number(process.env.PIXOO_FRAME_DELAY_MS ?? 20);
@@ -44,8 +45,16 @@ const server = createServer(async (request, response) => {
       writeQueue = writeQueue.then(() => pushToPixoo(frame));
       await writeQueue;
       sendJson(response, 200, { ok: true });
+    } else if (request.method === "GET" && url.pathname === "/") {
+      sendJson(response, 200, {
+        ok: true,
+        service: "Passerelle Bluetooth Pixoo",
+        display: "POST /display",
+        pixoo: DEVICE_ADDRESS ?? "non configuré",
+        port: PORT,
+      });
     } else {
-      sendJson(response, 404, { error: "Route introuvable." });
+      sendJson(response, 404, { error: "Route introuvable.", routes: ["POST /display", "GET /"] });
     }
   } catch (error) {
     connection?.close();
