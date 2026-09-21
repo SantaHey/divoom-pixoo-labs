@@ -8,7 +8,8 @@
     "web": "node web/server.js",
     "simulator": "node simulator/server.js",
     "bluetooth": "node bluetooth/server.js",
-    "example": "node main.js"
+    "example": "node main.js",
+    "all": "pnpm run dev & pnpm run web & pnpm run simulator & pnpm run bluetooth & pnpm run example"
   },
   "dependencies": {
     "bluetooth-serial-port": "git+https://github.com/tinyprinter/node-bluetooth-serial-port.git",
