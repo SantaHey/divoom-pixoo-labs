@@ -1,4 +1,3 @@
-import bluetoothSerialPort from "bluetooth-serial-port";
 import debug from "debug";
 
 const CONNECT_ATTEMPTS = 3;
@@ -6,7 +5,23 @@ const CONNECT_ATTEMPTS_DELAY = 500;
 
 const log = debug("pixoo-soup");
 
+let bluetoothSerialPort;
+async function loadBluetoothSerialPort() {
+  if (!bluetoothSerialPort) {
+    try {
+      bluetoothSerialPort = (await import("bluetooth-serial-port")).default;
+    } catch (error) {
+      throw new Error(
+        "Module natif 'bluetooth-serial-port' indisponible (binaire non compilé). " +
+        "Sur Raspberry Pi : installez les dépendances système puis lancez 'pnpm rebuild bluetooth-serial-port'."
+      );
+    }
+  }
+  return bluetoothSerialPort;
+}
+
 export async function connect(address) {
+  const bluetoothSerialPort = await loadBluetoothSerialPort();
   const btSerial = new bluetoothSerialPort.BluetoothSerialPort();
 
   for (let i=0;i<CONNECT_ATTEMPTS;i++) {
