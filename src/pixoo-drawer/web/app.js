@@ -4,6 +4,11 @@ const context = canvas.getContext("2d");
 const paletteElement = document.querySelector("#palette");
 const statusElement = document.querySelector("#status");
 const syncElement = document.querySelector("#sync-info");
+const historyCanvas = document.querySelector("#history-preview");
+const historyContext = historyCanvas.getContext("2d");
+const historyRange = document.querySelector("#history-range");
+const historyVersionElement = document.querySelector("#history-version");
+const historyInfoElement = document.querySelector("#history-info");
 
 const BASE_COLORS = ["000000", "ffffff", "ff4057", "ff1744", "ff6d00", "ff8a00", "ffcc00", "fff176", "40d978", "00c853", "00c9a7", "00b8d4", "4e7cff", "2979ff", "651fff", "8b5cf6", "d500f9", "ff66c4", "ff80ab", "8b4513", "c08457", "808080", "bdbdbd", "424242"];
 
@@ -19,6 +24,9 @@ let realtime;
 let reconnectTimer;
 let revision = -1;
 let serverStateReady = false;
+let historyRevisions = [];
+let historyLoadToken = 0;
+let historyRefreshTimer;
 
 // Le serveur est la seule source des pixels, jamais le stockage du navigateur.
 function applySharedDisplay(display, nextRevision) {
@@ -35,6 +43,57 @@ function applySharedDisplay(display, nextRevision) {
   drawCanvas();
   const coloredPixels = pixels.filter((pixel) => pixel !== 0).length;
   syncElement.textContent = `Serveur chargé : version ${revision}, ${coloredPixels} pixel(s) coloré(s).`;
+  scheduleHistoryRefresh();
+}
+
+function drawDisplayPreview(display) {
+  const cell = historyCanvas.width / SIZE;
+  display.pixels.forEach((colorIndex, index) => {
+    historyContext.fillStyle = `#${display.colors[colorIndex]}`;
+    historyContext.fillRect((index % SIZE) * cell, Math.floor(index / SIZE) * cell, cell, cell);
+  });
+}
+
+async function showHistoryAt(index) {
+  const selectedRevision = historyRevisions[index];
+  if (!Number.isInteger(selectedRevision)) return;
+  const token = ++historyLoadToken;
+  historyVersionElement.textContent = `v${selectedRevision}`;
+  historyInfoElement.textContent = `Chargement de la version ${selectedRevision}…`;
+  try {
+    const response = await fetch(`/history/${selectedRevision}`, { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const entry = await response.json();
+    if (token !== historyLoadToken) return;
+    drawDisplayPreview(entry.display);
+    const date = entry.createdAt ? new Date(entry.createdAt).toLocaleString("fr-FR") : "date inconnue";
+    historyInfoElement.textContent = `Version ${entry.revision} · ${date}`;
+  } catch (error) {
+    if (token === historyLoadToken) historyInfoElement.textContent = `Historique indisponible : ${error.message}`;
+  }
+}
+
+async function refreshHistory() {
+  try {
+    const response = await fetch("/history", { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const result = await response.json();
+    const previousRevision = historyRevisions[Number(historyRange.value)];
+    historyRevisions = result.revisions;
+    historyRange.max = String(Math.max(historyRevisions.length - 1, 0));
+    historyRange.disabled = historyRevisions.length === 0;
+    const selectedIndex = Math.max(0, previousRevision ? historyRevisions.indexOf(previousRevision) : historyRevisions.length - 1);
+    historyRange.value = String(selectedIndex);
+    if (historyRevisions.length) showHistoryAt(selectedIndex);
+    else historyInfoElement.textContent = "Aucune version archivée.";
+  } catch (error) {
+    historyInfoElement.textContent = `Historique indisponible : ${error.message}`;
+  }
+}
+
+function scheduleHistoryRefresh() {
+  clearTimeout(historyRefreshTimer);
+  historyRefreshTimer = setTimeout(refreshHistory, 150);
 }
 
 function connectRealtime() {
@@ -235,8 +294,10 @@ document.querySelector("#tools").onclick = (event) => {
   tool = button.dataset.tool;
   document.querySelectorAll("#tools button").forEach((item) => item.classList.toggle("selected", item === button));
 };
+historyRange.oninput = () => showHistoryAt(Number(historyRange.value));
 
 drawPalette();
 drawCanvas();
 loadSharedState();
 connectRealtime();
+refreshHistory();

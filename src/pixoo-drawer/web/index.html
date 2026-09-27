@@ -40,7 +40,20 @@
           <p id="sync-info">Chargement du dessin serveur…</p>
         </aside>
       </section>
+
+      <section class="history-panel" aria-labelledby="history-title">
+        <div>
+          <p class="eyebrow">HISTORIQUE COMPLET</p>
+          <h2 id="history-title">Aperçu des versions</h2>
+          <p id="history-info">Chargement de l'historique…</p>
+        </div>
+        <canvas id="history-preview" width="256" height="256" aria-label="Aperçu de la version sélectionnée"></canvas>
+        <label class="history-slider" for="history-range">
+          <span>Ancienne version <strong id="history-version">—</strong> Version actuelle</span>
+          <input id="history-range" type="range" min="0" max="0" value="0" step="1" disabled>
+        </label>
+      </section>
     </main>
-  <script type="module" src="/app.js?v=server-state-20260922"></script>
+  <script type="module" src="/app.js?v=history-20260927"></script>
   </body>
 </html>

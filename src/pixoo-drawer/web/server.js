@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import WebSocket, { WebSocketServer } from "ws";
 import { readJson, sendFile, sendJson } from "../shared/http.js";
@@ -26,6 +26,7 @@ const targets = {
 const BLUETOOTH_TIMEOUT_MS = 6000;
 const STATE_FILE = fileURLToPath(new URL("../data/current-display.json", import.meta.url));
 const STATE_DIRECTORY = fileURLToPath(new URL("../data/", import.meta.url));
+const HISTORY_DIRECTORY = fileURLToPath(new URL("../data/history/", import.meta.url));
 
 let revision = 0;
 
@@ -48,17 +49,30 @@ async function loadSharedDisplay() {
 let sharedDisplay = await loadSharedDisplay();
 let saveQueue = Promise.resolve();
 
+function historyFile(revisionNumber) {
+  return fileURLToPath(new URL(`../data/history/${revisionNumber}.json`, import.meta.url));
+}
+
 function persistSharedDisplay() {
-  const content = JSON.stringify({ revision, display: sharedDisplay });
+  const snapshot = { revision, createdAt: new Date().toISOString(), display: sharedDisplay };
+  const content = JSON.stringify(snapshot);
   saveQueue = saveQueue
     .catch((error) => console.error("[shared] sauvegarde précédente échouée :", error.message))
     .then(async () => {
       await mkdir(STATE_DIRECTORY, { recursive: true });
-      await writeFile(STATE_FILE, content);
-      console.log(`[shared] sauvegardé : version ${revision}`);
+      await mkdir(HISTORY_DIRECTORY, { recursive: true });
+      // Une version est un instantané complet : aucune version n'est écrasée.
+      await Promise.all([writeFile(STATE_FILE, content), writeFile(historyFile(snapshot.revision), content)]);
+      console.log(`[shared] sauvegardé et archivé : version ${snapshot.revision}`);
     });
   saveQueue.catch((error) => console.error("[shared] sauvegarde impossible :", error.message));
+  return saveQueue;
 }
+
+// Rend au moins le dessin actuellement chargé accessible dans l'historique.
+// Les versions antérieures à l'ajout de cette fonctionnalité ne peuvent pas
+// être reconstituées, car elles avaient été écrasées dans current-display.json.
+await persistSharedDisplay();
 
 function broadcastDisplay() {
   const message = JSON.stringify({ type: "state", revision, display: sharedDisplay });
@@ -67,12 +81,34 @@ function broadcastDisplay() {
   }
 }
 
-function updateSharedDisplay(display) {
+async function updateSharedDisplay(display) {
   sharedDisplay = validateDisplay(display);
   revision += 1;
-  persistSharedDisplay();
+  await persistSharedDisplay();
   broadcastDisplay();
   return sharedDisplay;
+}
+
+async function listHistory() {
+  try {
+    const entries = await readdir(HISTORY_DIRECTORY, { withFileTypes: true });
+    return entries
+      .filter((entry) => entry.isFile() && /^\d+\.json$/.test(entry.name))
+      .map((entry) => Number.parseInt(entry.name, 10))
+      .sort((left, right) => left - right);
+  } catch (error) {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+async function readHistory(revisionNumber) {
+  const entry = JSON.parse(await readFile(historyFile(revisionNumber), "utf8"));
+  return {
+    revision: Number.isInteger(entry.revision) ? entry.revision : revisionNumber,
+    createdAt: entry.createdAt ?? null,
+    display: validateDisplay(entry.display ?? entry),
+  };
 }
 
 // ==== FORWARD ====
@@ -102,7 +138,7 @@ const server = createServer(async (request, response) => {
     const url = new URL(request.url, `http://${request.headers.host}`);
 
     if (request.method === "POST" && url.pathname === "/display") {
-      const display = updateSharedDisplay(await readJson(request));
+      const display = await updateSharedDisplay(await readJson(request));
 
       // On envoie TOUJOURS aux deux cibles, indépendamment l'une de l'autre.
       const simulatorPromise = forward("simulator", display);
@@ -121,6 +157,11 @@ const server = createServer(async (request, response) => {
         bluetooth: "en arrière-plan",
       };
       sendJson(response, simulationResult.status, responseBody);
+    } else if (request.method === "GET" && url.pathname === "/history") {
+      sendJson(response, 200, { revisions: await listHistory() });
+    } else if (request.method === "GET" && /^\/history\/\d+$/.test(url.pathname)) {
+      const revisionNumber = Number.parseInt(url.pathname.split("/").at(-1), 10);
+      sendJson(response, 200, await readHistory(revisionNumber));
     } else if (request.method === "GET" && url.pathname === "/state") {
       sendJson(response, 200, { revision, display: sharedDisplay });
     } else if (request.method === "GET" && url.pathname === "/debug") {
@@ -149,11 +190,11 @@ webSocketServer.on("connection", (socket) => {
 
   socket.on("close", () => console.log(`[shared] navigateur déconnecté (${webSocketServer.clients.size})`));
 
-  socket.on("message", (rawMessage) => {
+  socket.on("message", async (rawMessage) => {
     try {
       const message = JSON.parse(rawMessage.toString());
       if (message.type !== "display") return;
-      const display = updateSharedDisplay(message.display);
+      const display = await updateSharedDisplay(message.display);
       console.log(`[shared] dessin reçu via WebSocket : version ${revision}`);
 
       // La synchro des navigateurs est immédiate. Les sorties physiques ne la
